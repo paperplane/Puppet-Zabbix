@@ -1,0 +1,89 @@
+#!/bin/bash
+# init file for zabbixagentd
+#
+# processname: /usr/local/zabbix/sbin/zabbix_agentd
+# config: /usr/local/zabbix/etc/zabbix_agentd.conf
+# pidfile: /tmp/zabbix_agentd.pid
+
+# source function library
+. /etc/init.d/functions
+
+
+if [ -e /usr/local/zabbix/etc/zabbix_agentd.conf ]; then
+  . /usr/local/zabbix/etc/zabbix_agentd.conf
+fi
+
+RETVAL=0
+prog="zabbix_agentd"
+binary=/usr/local/zabbix/sbin/zabbix_agentd
+pidfile=/tmp/zabbix_agentd.pid
+
+start() {
+        [ -x $binary ] || exit 5
+        echo -n $"Starting $prog: "
+        if [ $UID -ne 0 ]; then
+                RETVAL=1
+                failure
+        else
+                daemon --pidfile=$pidfile $binary 
+                RETVAL=$?
+                [ $RETVAL -eq 0 ] && touch /var/lock/subsys/$prog
+        fi;
+        echo 
+        return $RETVAL
+}
+
+stop() {
+        echo -n $"Stopping $prog: "
+        if [ $UID -ne 0 ]; then
+                RETVAL=1
+                failure
+        else
+                killproc -p $pidfile $binary
+                RETVAL=$?
+                [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/$prog
+        fi;
+        echo
+        return $RETVAL
+}
+
+reload(){
+        echo -n $"Reloading $prog: "
+        killproc -p $pidfile $binary -HUP
+        RETVAL=$?
+        echo 
+        return $RETVAL
+}
+
+restart(){
+	stop
+	start
+}
+
+case "$1" in
+  start)
+	start
+	RETVAL=$?
+	;;
+  stop)
+	stop
+	RETVAL=$?
+	;;
+  restart)
+	restart
+	RETVAL=$?
+        ;;
+  reload)
+	reload
+	RETVAL=$?
+        ;;
+  status)
+        status zabbix_agentd
+	RETVAL=$?
+        ;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|reload}"
+	RETVAL=2
+esac
+
+exit $RETVAL
